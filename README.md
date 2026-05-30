@@ -33,8 +33,32 @@ python app.py            # launch the Gradio demo
 - **Stage 2 — Momentum** — growth accelerating, early-mover window
 - **Stage 3 — Resonance** — broad accelerating signal, mainstream incoming
 
+## Phase 2 — 1D-CNN experiment
+
+We tested whether a small 1D-CNN reading the raw trend curve beats the
+logistic-regression baseline, under the *same* leave-one-ingredient-out evaluation on
+the same 20 ingredients. Augmentation (jitter / scaling / time-shift) was applied inside
+each training fold only — never to the held-out ingredient — so the comparison is
+leakage-free. Run it with `python -m src.experiment`.
+
+| Model | LOO accuracy | precision | recall |
+|-------|-------------|-----------|--------|
+| Logistic Regression | 0.64 | 0.54 | 0.75 |
+| 1D-CNN (augmented)  | 0.62 | 0.52 | 0.70 |
+
+**Finding:** the CNN did **not** beat the baseline (0.62 vs 0.64). On ~50 windows from
+20 ingredients, even with augmentation, the deep model has too little data to gain an
+edge — confirming that simple, interpretable models hold up well on small, noisy trend
+data. This is a real result, reported as-is: we did not tune the CNN against the test
+folds to manufacture a win. More training ingredients, not a fancier model, is the
+likely path past the 0.70 target.
+
 ## Notes
 - pytrends may be rate-limited or blocked. Fetches are cached to `data/raw/`; if blocked,
-  export CSVs manually from trends.google.com to the path named in the error and re-run.
-  Cached files make re-runs incremental.
-- Phase 1 is the logistic-regression baseline. LSTM/CNN are deferred to Phase 2.
+  set a valid `NID` browser cookie via the `TRENDS_NID` env var, or export CSVs manually
+  from trends.google.com to the path named in the error and re-run. Cached files make
+  re-runs incremental.
+- Phase 1 is the logistic-regression baseline (`src/train.py`). Phase 2 is the 1D-CNN
+  experiment (`src/sequences.py`, `src/cnn.py`, `src/experiment.py`); it is an offline
+  comparison and is intentionally **not** wired into the live demo, since it did not beat
+  the baseline.
