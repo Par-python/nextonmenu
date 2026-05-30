@@ -98,6 +98,19 @@ def growth_features(window_df):
 # --------------------------------------------------------------------------- #
 # Window slicing
 # --------------------------------------------------------------------------- #
+def find_peak_pos(iot_df):
+    """Row index of the trend peak, found on a SMOOTHED curve.
+
+    Smoothing prevents a lone early spike from masquerading as the true peak
+    (e.g. ube's spurious 2009 blip). This is the peak `slice_windows` builds its
+    windows around — use it anywhere a "peak" must match the model's behavior.
+    """
+    win = _months_to_rows(WINDOW_MONTHS, iot_df.index)
+    smooth = iot_df["value"].rolling(window=max(3, win // 4), min_periods=1,
+                                     center=True).mean().to_numpy()
+    return int(smooth.argmax())
+
+
 def slice_windows(iot_df):
     """Cut up to 3 labeled windows around the all-time peak.
 
@@ -106,11 +119,7 @@ def slice_windows(iot_df):
     """
     win = _months_to_rows(WINDOW_MONTHS, iot_df.index)
     gap = _months_to_rows(EARLY_GAP_MONTHS, iot_df.index)
-    # Smooth before locating the peak so a lone early spike doesn't masquerade as
-    # the true peak (e.g. ube's spurious 2009 blip).
-    smooth = iot_df["value"].rolling(window=max(3, win // 4), min_periods=1,
-                                     center=True).mean().to_numpy()
-    peak_pos = int(smooth.argmax())
+    peak_pos = find_peak_pos(iot_df)
     out = []
 
     # early_curve: 24m window ending `gap` weeks before the peak
