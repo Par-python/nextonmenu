@@ -8,9 +8,20 @@ MODEL_PATH = PROCESSED_DIR / "model.pkl"
 FEATURES_PATH = PROCESSED_DIR / "features.csv"
 
 # Ingredients that already went niche -> mainstream (positive source).
+# Expanded with two "waves" of confirmed crossovers for more training signal.
+# Any ingredient whose fetched curve lacks a real niche->mainstream rise should be
+# pruned (it would be a mislabeled positive).
 VIRAL_INGREDIENTS = [
+    # original set
     "matcha", "ube", "tahini", "kimchi", "miso",
     "boba", "yuzu", "sriracha", "turmeric", "gochujang",
+    # Asian-pantry wave
+    "togarashi", "furikake", "dashi", "ponzu", "mochi",
+    # global-staple wave
+    "harissa", "tamari", "kefir", "quinoa", "kombucha",
+    # Dropped after vetting: "taro" (already mainstream in 2004, baseline ~52 — not
+    # a niche->mainstream crossover) and "acai" (early-2009 fad that crashed, its
+    # post-peak shape muddied the early-curve signal). Both slightly hurt LOO acc.
 ]
 
 # Rising-but-not-mainstream. Demo/inference ONLY — never used as training labels.

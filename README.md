@@ -28,10 +28,10 @@ python app.py            # launch the Gradio demo
    (`src/diagnose.py`), shown in a Gradio UI (`app.py`).
 
 ## Stages
-- 😴 **No signal** — still noise
-- 🌀 **Stage 1 — Entropy Drop** — interest organizing, watch this
-- ⚡ **Stage 2 — Momentum** — growth accelerating, early-mover window
-- 🔊 **Stage 3 — Resonance** — broad accelerating signal, mainstream incoming
+- **No signal** — still noise
+- **Stage 1 — Entropy Drop** — interest organizing, watch this
+- **Stage 2 — Momentum** — growth accelerating, early-mover window
+- **Stage 3 — Resonance** — broad accelerating signal, mainstream incoming
 
 ## Notes
 - pytrends may be rate-limited or blocked. Fetches are cached to `data/raw/`; if blocked,

@@ -20,22 +20,26 @@ def classify_stage(prob, feats):
     accel = feats["acceleration"]
     entropy_delta = feats["entropy_delta_6m"]
 
+    # The model probability is the gatekeeper: if the curve doesn't look like an
+    # early-viral curve, a raw acceleration/entropy blip must NOT earn a stage. This
+    # prevents a noisy spike (low match) from being mislabeled "Momentum".
+    if prob < PROB_SIGNAL_MIN:
+        return ("No signal", "",
+                f"Doesn't match an early-viral curve (match {prob:.0%}) — still noise.")
+
     if prob >= PROB_RESONANCE_MIN and accel > ACCEL_MOMENTUM_MIN and feats["peak_not_yet_hit"]:
-        return ("Stage 3 — Resonance", "🔊",
+        return ("Stage 3 — Resonance", "",
                 f"High match ({prob:.0%}) with accelerating, pre-peak signal.")
 
     if accel > ACCEL_MOMENTUM_MIN and growth > GROWTH_FLAT_MAX:
-        return ("Stage 2 — Momentum", "⚡",
-                f"Growth is accelerating (accel={accel:+.2f}); early-mover window.")
+        return ("Stage 2 — Momentum", "",
+                f"Match {prob:.0%} and growth accelerating (accel={accel:+.2f}); early-mover window.")
 
-    if entropy_delta < 0 and prob >= PROB_SIGNAL_MIN:
-        return ("Stage 1 — Entropy Drop", "🌀",
-                f"Entropy falling ({entropy_delta:+.2f}) while momentum still flat — watch this.")
+    if entropy_delta < 0:
+        return ("Stage 1 — Entropy Drop", "",
+                f"Match {prob:.0%}, entropy falling ({entropy_delta:+.2f}) while momentum still flat — watch this.")
 
-    if prob < PROB_SIGNAL_MIN and abs(growth) < GROWTH_FLAT_MAX:
-        return ("No signal", "😴", "Still noise — no organizing signal yet.")
-
-    return ("Stage 1 — Entropy Drop", "🌀",
+    return ("Stage 1 — Entropy Drop", "",
             f"Early, ambiguous signal (match {prob:.0%}); worth watching.")
 
 
@@ -79,7 +83,7 @@ def diagnose(ingredient):
     Xs = model["scaler"].transform(X)
     prob = float(model["clf"].predict_proba(Xs)[0][1])
 
-    stage, emoji, rationale = classify_stage(prob, feats)
+    stage, _emoji, rationale = classify_stage(prob, feats)
     chart = _trend_chart(iot, ingredient)
-    headline = f"{emoji} {ingredient.title()} — {stage}"
+    headline = f"{ingredient.title()} — {stage}"
     return headline, rationale, prob, chart

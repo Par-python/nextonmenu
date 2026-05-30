@@ -1,4 +1,5 @@
 """pytrends fetching with CSV cache, retry/backoff, and manual-export fallback."""
+import os
 import time
 import pandas as pd
 from src.config import RAW_DIR, FULL_TIMEFRAME
@@ -18,7 +19,32 @@ def _region_path(ingredient, tag):
 
 def _new_client():
     from pytrends.request import TrendReq
-    return TrendReq(hl="en-US", tz=360)
+    # NOTE: pytrends' own retries= arg crashes on urllib3 v2 (removed method_whitelist)
+    # and doesn't help against sustained IP-level blocks anyway, so we rely on our
+    # operation-level _fetch_with_retry plus the CSV cache/fallback instead.
+    #
+    # If a TRENDS_NID env var is set, pass ONLY that NID cookie through to the
+    # underlying session. A valid browser session cookie often clears Google's
+    # bot-detection block. We deliberately send nothing but NID — never the full
+    # browser Cookie header, which would leak account-auth tokens. The value lives
+    # only in the environment; it is never logged, printed, or written to disk.
+    client = TrendReq(hl="en-US", tz=360)
+
+    nid = os.environ.get("TRENDS_NID", "").strip()
+    if nid:
+        # Strip an optional "NID=" prefix so we store just the value.
+        value = nid[4:] if nid.lower().startswith("nid=") else nid
+        # pytrends fetches its own NID during __init__ (via GetGoogleCookie) and
+        # uses self.cookies (a plain dict in this version) for the actual data
+        # requests. Overwrite that NID with our browser NID so the data calls carry
+        # a valid session. We touch only the NID cookie — never the full browser
+        # Cookie header (account-auth tokens). The value stays in memory; it is
+        # never logged or written.
+        if isinstance(client.cookies, dict):
+            client.cookies["NID"] = value
+        else:  # CookieJar in other pytrends versions
+            client.cookies.set("NID", value, domain=".google.com")
+    return client
 
 
 def _fetch_with_retry(build_and_get, retries=3):
