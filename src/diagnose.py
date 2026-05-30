@@ -2,7 +2,11 @@
 import pickle
 
 import matplotlib
-matplotlib.use("Agg")
+# Use the non-interactive Agg backend for headless scripts and the Gradio app, but
+# DON'T override an interactive backend already chosen by a notebook (e.g. the inline
+# backend) — doing so would re-trigger "FigureCanvasAgg is non-interactive" warnings.
+if "inline" not in matplotlib.get_backend().lower():
+    matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from src.config import (PROB_SIGNAL_MIN, GROWTH_FLAT_MAX, ACCEL_MOMENTUM_MIN,
