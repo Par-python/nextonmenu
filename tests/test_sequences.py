@@ -19,3 +19,24 @@ def test_resample_preserves_monotonic_trend():
     arr = np.linspace(0, 100, 40)
     out = resample(arr, length=24)
     assert np.all(np.diff(out) >= -1e-9)  # still non-decreasing
+
+
+from src.sequences import normalize
+
+
+def test_normalize_range_is_0_1():
+    arr = np.array([5.0, 10.0, 20.0, 100.0])
+    out = normalize(arr)
+    assert out.min() == 0.0 and out.max() == 1.0
+
+
+def test_normalize_preserves_order():
+    arr = np.array([3.0, 1.0, 2.0])
+    out = normalize(arr)
+    assert out[1] < out[2] < out[0]  # ranking unchanged
+
+
+def test_normalize_flat_curve_does_not_divide_by_zero():
+    arr = np.array([7.0, 7.0, 7.0])
+    out = normalize(arr)
+    assert np.all(np.isfinite(out))

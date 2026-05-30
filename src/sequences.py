@@ -10,3 +10,13 @@ def resample(values, length=24):
     src_x = np.linspace(0.0, 1.0, num=arr.size)
     dst_x = np.linspace(0.0, 1.0, num=length)
     return np.interp(dst_x, src_x, arr)
+
+
+def normalize(values):
+    """Min-max scale a single curve to [0, 1]. Flat curves map to all-zeros."""
+    arr = np.asarray(values, dtype=float)
+    lo = arr.min()
+    rng = arr.max() - lo
+    if rng < 1e-12:
+        return np.zeros_like(arr)
+    return (arr - lo) / rng
