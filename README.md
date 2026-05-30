@@ -62,6 +62,24 @@ or richer features, not a fancier model. A learning curve in `notebooks/analysis
 that up: accuracy flattens in the mid-0.60s well before 20 ingredients, which means the model
 is signal-limited, not data-limited.
 
+## Limitations
+
+These numbers come from 20 ingredients, which is small, so read them as directional rather
+than precise:
+
+- **The 0.66 is mildly optimistic.** We iterated on the dataset and features while checking the
+  same leave-one-ingredient-out holdout, so the model has implicitly fit to that particular set.
+  A fresh batch of ingredients would give a cleaner estimate.
+- **Small differences aren't significant.** The score wobbles by roughly plus or minus 0.02 to
+  0.03 fold to fold, so 0.66 vs 0.64 vs the CNN's 0.62 are probably not statistically
+  distinguishable. We can say the CNN didn't beat the baseline; we don't claim "0.66 beats 0.64"
+  as a hard fact.
+- **The labels are human judgment.** Which ingredients "went viral" and which months count as the
+  "early curve" were our calls. Defensible and consistent, but not ground truth.
+
+The process is sound (no leakage, real holdout, results reported as-is); the conclusions are
+directional. Radar, not crystal ball.
+
 ## Notes
 
 - pytrends gets rate-limited or blocked fairly often. Fetches are cached to `data/raw/`, so
