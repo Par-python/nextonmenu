@@ -28,7 +28,23 @@ def _months_to_rows(months, index):
     return max(1, int(round(months * _rows_per_month(index))))
 
 
+# Columns the MODEL trains on. We deliberately exclude growth_rate_6m and
+# acceleration: all three growth features are near-perfectly correlated (r = 0.98-0.99,
+# since acceleration is derived from the growth rates), and that collinearity made the
+# logistic-regression coefficients uninterpretable (arbitrary cancelling signs). Keeping
+# only growth_rate_1y removes the redundancy. It actually nudges leave-one-ingredient-out
+# accuracy up (0.64 -> 0.66) and makes every coefficient sign intuitive. The dropped
+# columns are still computed and stored in features.csv for inspection; the model just
+# doesn't use them.
 FEATURE_COLUMNS = [
+    "growth_rate_1y",
+    "peak_not_yet_hit", "search_baseline",
+    "geographic_entropy", "temporal_entropy", "entropy_delta_6m",
+]
+
+# All features extracted per window (superset of FEATURE_COLUMNS), persisted to
+# features.csv so the dropped growth features remain available for analysis.
+ALL_FEATURE_COLUMNS = [
     "growth_rate_6m", "growth_rate_1y", "acceleration",
     "peak_not_yet_hit", "search_baseline",
     "geographic_entropy", "temporal_entropy", "entropy_delta_6m",

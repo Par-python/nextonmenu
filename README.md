@@ -23,8 +23,11 @@ python app.py            # launch the Gradio demo
 1. **Fetch.** Google Trends data for ingredients that already went viral (`src/fetch.py`).
 2. **Window.** For each one, slice the _early-curve_ window (the positive example), plus its
    flat pre-niche era and its post-peak plateau (the negatives) (`src/features.py`).
-3. **Features.** Growth (rate, acceleration, baseline, peak-not-hit) and entropy
-   (geographic, temporal, 6-month delta).
+3. **Features.** Growth (1-year rate, baseline, peak-not-hit) and entropy (geographic,
+   temporal, 6-month delta). We compute the short-term growth rate and acceleration too, but
+   the model drops them: all three growth features are correlated at r = 0.98 to 0.99, and
+   keeping just the 1-year rate removes that redundancy (it nudges accuracy up and makes the
+   coefficients interpretable).
 4. **Train.** Logistic regression, evaluated with leave-one-ingredient-out CV so the score
    reflects judging an _unseen_ ingredient rather than memorizing a known one (`src/train.py`).
 5. **Diagnose.** Fetch an ingredient live, map the model output to a lifecycle stage
@@ -47,17 +50,17 @@ You can reproduce it with `python -m src.experiment`.
 
 | Model               | LOO accuracy | precision | recall |
 | ------------------- | ------------ | --------- | ------ |
-| Logistic Regression | 0.64         | 0.54      | 0.75   |
+| Logistic Regression | 0.66         | 0.55      | 0.80   |
 | 1D-CNN (augmented)  | 0.62         | 0.52      | 0.70   |
 
-**Finding:** the CNN did **not** beat the baseline (0.62 vs 0.64). On roughly 50 windows from
+**Finding:** the CNN did **not** beat the baseline (0.62 vs 0.66). On roughly 50 windows from
 20 ingredients, even with augmentation, the deep model has too little data to gain an edge.
 That is a genuine result, not a failure to hide: on small, noisy trend data, the simple
 interpretable model holds up. We report it as-is, and we did not tune the CNN against the test
 folds to manufacture a win. The likely path past the 0.70 target is more training ingredients
 or richer features, not a fancier model. A learning curve in `notebooks/analysis.ipynb` backs
-that up: accuracy flattens around 0.64 well before 20 ingredients, which means the model is
-signal-limited, not data-limited.
+that up: accuracy flattens in the mid-0.60s well before 20 ingredients, which means the model
+is signal-limited, not data-limited.
 
 ## Notes
 
