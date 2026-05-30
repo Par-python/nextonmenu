@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 
 SEED = 0
-EPOCHS = 80
+EPOCHS = 300
 LR = 1e-3
-DROPOUT = 0.5
+DROPOUT = 0.2
 
 
 class TrendCNN(nn.Module):
