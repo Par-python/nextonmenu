@@ -7,3 +7,4 @@ data/processed/
 __pycache__/
 *.pyc
 .pytest_cache/
+notebooks/linkedin_trend_grid.png
