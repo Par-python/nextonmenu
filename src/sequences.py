@@ -18,6 +18,7 @@ def normalize(values):
     lo = arr.min()
     rng = arr.max() - lo
     if rng < 1e-12:
+        # Flat curve: intentionally map to all-zeros (a valid CNN input, avoids div-by-zero)
         return np.zeros_like(arr)
     return (arr - lo) / rng
 
@@ -28,6 +29,14 @@ def augment(values, rng, n=4, jitter=0.02, scale_range=0.1, max_shift=2):
     Each variant applies small jitter (Gaussian noise), amplitude scaling, and a
     time-shift (edge-padded roll). All perturbations are small enough to preserve
     the curve's shape and therefore its label.
+
+    Args:
+        values: 1-D array-like of floats. Assumed non-empty and already normalized.
+        rng: a numpy Generator (e.g. np.random.default_rng(seed)) for reproducibility.
+        n: number of augmented variants to produce.
+        jitter: std-dev of Gaussian noise added per sample.
+        scale_range: max fractional amplitude perturbation (±).
+        max_shift: maximum absolute time-shift in samples (edge-padded).
     """
     arr = np.asarray(values, dtype=float)
     variants = []
