@@ -78,7 +78,7 @@ than precise:
   "early curve" were our calls. Defensible and consistent, but not ground truth.
 
 The process is sound (no leakage, real holdout, results reported as-is); the conclusions are
-directional. Radar, not crystal ball.
+directional.
 
 ## Notes
 
