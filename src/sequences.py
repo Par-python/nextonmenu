@@ -53,3 +53,29 @@ def augment(values, rng, n=4, jitter=0.02, scale_range=0.1, max_shift=2):
                 v[shift:] = v[shift - 1]
         variants.append(v)
     return variants
+
+
+SEQ_LENGTH = 24
+
+
+def build_sequence_dataset(ingredients=None, length=SEQ_LENGTH):
+    """Return (X, y, groups): X is (n, length) normalized curves, y labels,
+    groups ingredient names. Uses the SAME windows as the LR dataset.
+
+    Augmentation is intentionally NOT applied here — it is applied per-fold inside
+    the experiment to avoid leaking augmented copies of a held-out ingredient.
+    """
+    from src.config import VIRAL_INGREDIENTS, FULL_TIMEFRAME
+    from src.fetch import fetch_interest_over_time
+    from src.features import slice_windows
+
+    ingredients = ingredients or VIRAL_INGREDIENTS
+    X, y, groups = [], [], []
+    for ing in ingredients:
+        iot = fetch_interest_over_time(ing, timeframe=FULL_TIMEFRAME, tag="full")
+        for w in slice_windows(iot):
+            curve = normalize(resample(w["data"]["value"].to_numpy(), length))
+            X.append(curve)
+            y.append(w["label"])
+            groups.append(ing)
+    return np.array(X, dtype=float), np.array(y, dtype=int), np.array(groups)
