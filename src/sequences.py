@@ -20,3 +20,27 @@ def normalize(values):
     if rng < 1e-12:
         return np.zeros_like(arr)
     return (arr - lo) / rng
+
+
+def augment(values, rng, n=4, jitter=0.02, scale_range=0.1, max_shift=2):
+    """Return `n` label-preserving variants of a normalized curve.
+
+    Each variant applies small jitter (Gaussian noise), amplitude scaling, and a
+    time-shift (edge-padded roll). All perturbations are small enough to preserve
+    the curve's shape and therefore its label.
+    """
+    arr = np.asarray(values, dtype=float)
+    variants = []
+    for _ in range(n):
+        v = arr.copy()
+        v = v * (1.0 + rng.uniform(-scale_range, scale_range))   # amplitude scale
+        v = v + rng.normal(0.0, jitter, size=v.shape)            # jitter
+        shift = int(rng.integers(-max_shift, max_shift + 1))     # time-shift
+        if shift != 0:
+            v = np.roll(v, shift)
+            if shift > 0:
+                v[:shift] = v[shift]
+            else:
+                v[shift:] = v[shift - 1]
+        variants.append(v)
+    return variants

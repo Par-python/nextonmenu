@@ -40,3 +40,29 @@ def test_normalize_flat_curve_does_not_divide_by_zero():
     arr = np.array([7.0, 7.0, 7.0])
     out = normalize(arr)
     assert np.all(np.isfinite(out))
+
+
+from src.sequences import augment
+
+
+def test_augment_returns_requested_count():
+    rng = np.random.default_rng(0)
+    arr = np.linspace(0, 1, 24)
+    variants = augment(arr, rng, n=5)
+    assert len(variants) == 5
+
+
+def test_augment_preserves_length():
+    rng = np.random.default_rng(0)
+    arr = np.linspace(0, 1, 24)
+    for v in augment(arr, rng, n=3):
+        assert len(v) == 24
+
+
+def test_augment_changes_values_but_keeps_shape():
+    rng = np.random.default_rng(0)
+    arr = np.linspace(0, 1, 24)  # clearly rising
+    variants = augment(arr, rng, n=5)
+    assert any(not np.allclose(v, arr) for v in variants)
+    for v in variants:
+        assert v[12:].mean() > v[:12].mean()
