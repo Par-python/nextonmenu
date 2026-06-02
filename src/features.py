@@ -48,6 +48,7 @@ ALL_FEATURE_COLUMNS = [
     "growth_rate_6m", "growth_rate_1y", "acceleration",
     "peak_not_yet_hit", "search_baseline",
     "geographic_entropy", "temporal_entropy", "entropy_delta_6m",
+    "sample_entropy",
 ]
 
 
@@ -71,6 +72,46 @@ def temporal_entropy(values, bins=10):
     hist = hist + 1e-9
     probs = hist / hist.sum()
     return float(shannon_entropy(probs))
+
+
+def sample_entropy(values, m=2, r=0.2):
+    """Sample entropy of a 1D series — less variance-driven than histogram-Shannon.
+
+    Measures the (negative log) conditional probability that sequences close for `m`
+    points stay close for m+1. Tolerance `r` is scaled by the series std, so constant
+    rescaling of the whole curve does not change the result (unlike temporal_entropy,
+    which tracks raw spread). Returns 0.0 for series too short or with no variation.
+
+    CAVEAT: like all SampEn, this saturates toward 0.0 on short (<~100-point) series —
+    the m+1 match count hits zero and the result collapses to 0.0, indistinguishable
+    from a flat curve. At this project's 24-row monthly windows it is therefore
+    unreliable, which is exactly why it is a stored-but-unused inspection candidate
+    (in ALL_FEATURE_COLUMNS only), not a model input. Re-validate at the real window
+    size before ever promoting it into FEATURE_COLUMNS.
+    """
+    arr = np.asarray(values, dtype=float)
+    n = arr.size
+    if n < m + 2:
+        return 0.0
+    sd = arr.std()
+    if sd < 1e-12:
+        return 0.0
+    tol = r * sd
+
+    def _phi(mm):
+        # count template matches (Chebyshev distance <= tol), excluding self-matches
+        templates = np.array([arr[i:i + mm] for i in range(n - mm + 1)])
+        count = 0
+        for i in range(len(templates)):
+            d = np.max(np.abs(templates - templates[i]), axis=1)
+            count += np.sum(d <= tol) - 1  # exclude self
+        return count
+
+    b = _phi(m)
+    a = _phi(m + 1)
+    if b == 0 or a == 0:
+        return 0.0
+    return float(-np.log(a / b))
 
 
 # --------------------------------------------------------------------------- #
@@ -179,6 +220,7 @@ def extract_features(window_df, geo_entropy):
     feats["geographic_entropy"] = float(geo_entropy)
     feats["temporal_entropy"] = temporal
     feats["entropy_delta_6m"] = entropy_delta_6m
+    feats["sample_entropy"] = sample_entropy(s.to_numpy())
     return feats
 
 

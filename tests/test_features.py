@@ -77,3 +77,22 @@ def test_extract_features_row_has_all_columns(rising_then_peak_iot):
                 "geographic_entropy", "temporal_entropy", "entropy_delta_6m"]:
         assert col in row
     assert row["geographic_entropy"] == 1.2
+
+
+# --- sample entropy --------------------------------------------------------
+def test_sample_entropy_higher_for_noisy_than_smooth():
+    from src.features import sample_entropy
+    smooth = list(np.linspace(0, 100, 100))          # smooth ramp
+    import random; random.seed(0)
+    noisy = [random.gauss(50, 30) for _ in range(100)]
+    assert sample_entropy(noisy) > sample_entropy(smooth)
+
+
+def test_sample_entropy_flat_series_is_finite():
+    from src.features import sample_entropy
+    assert np.isfinite(sample_entropy([7.0] * 50))
+
+
+def test_sample_entropy_short_series_returns_zero():
+    from src.features import sample_entropy
+    assert sample_entropy([1.0, 2.0]) == 0.0
