@@ -96,3 +96,67 @@ def test_sample_entropy_flat_series_is_finite():
 def test_sample_entropy_short_series_returns_zero():
     from src.features import sample_entropy
     assert sample_entropy([1.0, 2.0]) == 0.0
+
+
+# --- non-breakout slicing --------------------------------------------------
+def test_non_breakout_window_is_single_label_0(rising_then_peak_iot):
+    from src.features import slice_non_breakout_window
+    out = slice_non_breakout_window(rising_then_peak_iot)
+    assert len(out) == 1
+    assert out[0]["window_type"] == "non_breakout"
+    assert out[0]["label"] == 0
+
+
+def test_non_breakout_window_ends_before_steepest_rise(rising_then_peak_iot):
+    from src.features import slice_non_breakout_window
+    out = slice_non_breakout_window(rising_then_peak_iot)
+    win = out[0]["data"]
+    assert len(win) > 0
+    assert win.index[-1] < rising_then_peak_iot.index[-1]
+
+
+def test_non_breakout_flat_curve_yields_nothing(flat_iot):
+    from src.features import slice_non_breakout_window
+    assert slice_non_breakout_window(flat_iot) == []
+
+
+def test_non_breakout_flat_noise_midseries_yields_nothing():
+    # A purely flat noisy curve (no real trend) whose noisy max-slope lands mid-series.
+    # Must still yield NO window — a flat term must not contribute a label-0 "early curve".
+    import pandas as pd
+    from src.features import slice_non_breakout_window
+    n = 520
+    idx = pd.date_range("2010-01-03", periods=n, freq="W")
+    rng = np.random.default_rng(7)
+    flat = np.clip(np.full(n, 4.0) + rng.normal(0, 1.0, n), 0, 100)
+    assert slice_non_breakout_window(pd.DataFrame({"value": flat}, index=idx)) == []
+
+
+def test_non_breakout_modest_rise_yields_window():
+    # The real use case: a "rose then fizzled" curve (5 -> 40, never breaks out) must
+    # produce exactly one label-0 window of the configured length, ending before its rise.
+    import pandas as pd
+    from src.features import slice_non_breakout_window, _months_to_rows, find_steepest_rise_pos
+    from src.config import WINDOW_MONTHS, EARLY_GAP_MONTHS
+    n = 520
+    idx = pd.date_range("2010-01-03", periods=n, freq="W")
+    vals = np.concatenate([np.full(150, 5.0), np.linspace(5, 40, 200), np.full(170, 38.0)])
+    df = pd.DataFrame({"value": vals}, index=idx)
+    out = slice_non_breakout_window(df)
+    assert len(out) == 1 and out[0]["label"] == 0
+    win = out[0]["data"]
+    assert len(win) == _months_to_rows(WINDOW_MONTHS, idx)            # full-length window
+    rise_pos = find_steepest_rise_pos(df)
+    assert win.index[-1] < idx[rise_pos]                             # ends before the rise
+
+
+def test_non_breakout_short_history_before_rise_yields_nothing():
+    # A curve that rises almost immediately has no room for a full window before the
+    # rise (start < 0) and must yield [] via the geometry guard, not the flatness guard.
+    import pandas as pd
+    from src.features import slice_non_breakout_window
+    n = 520
+    idx = pd.date_range("2010-01-03", periods=n, freq="W")
+    vals = np.concatenate([np.linspace(5, 60, 30), np.full(n - 30, 58.0)])  # rises at the start
+    df = pd.DataFrame({"value": vals}, index=idx)
+    assert slice_non_breakout_window(df) == []

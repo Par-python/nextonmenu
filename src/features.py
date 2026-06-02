@@ -203,6 +203,59 @@ def slice_windows(iot_df):
     return out
 
 
+def find_steepest_rise_pos(iot_df):
+    """Row index where a SMOOTHED curve is rising fastest (max positive slope).
+
+    For non-breakout terms there is no real peak to anchor on, so we anchor the
+    label-0 'early curve' on the steepest-rise point instead — mirroring where a
+    winner's early_curve sits relative to its own organizing phase.
+    """
+    win = _months_to_rows(WINDOW_MONTHS, iot_df.index)
+    smooth = iot_df["value"].rolling(window=max(3, win // 4), min_periods=1,
+                                     center=True).mean().to_numpy()
+    slope = np.diff(smooth)
+    if slope.size == 0:
+        return 0
+    return int(slope.argmax()) + 1  # +1: diff index i is the slope ending at i+1
+
+
+# Minimum NET sustained rise (interest units, on the smoothed curve) to count as a
+# "real" rise. We measure the smoothed peak minus the smoothed minimum that precedes
+# it — robust to noise, unlike a single max-slope which a flat noisy curve can spike.
+# Flat noise curves sit ~1 unit; a genuine modest non-breakout rise is tens of units.
+_NB_MIN_NET_RISE = 3.0
+
+
+def slice_non_breakout_window(iot_df):
+    """One label-0 'early curve' for a non-breakout term, anchored on steepest rise.
+
+    Takes the WINDOW_MONTHS window ending EARLY_GAP_MONTHS before the steepest-rise
+    point, matching the geometry of a winner's early_curve. Returns [] if the curve
+    is too short for a full window or too flat to have a meaningful rise.
+    """
+    win = _months_to_rows(WINDOW_MONTHS, iot_df.index)
+    gap = _months_to_rows(EARLY_GAP_MONTHS, iot_df.index)
+
+    smooth = iot_df["value"].rolling(window=max(3, win // 4), min_periods=1,
+                                     center=True).mean().to_numpy()
+    if smooth.size < 2:
+        return []
+    amax = int(np.argmax(smooth))
+    net_rise = float(smooth[amax] - smooth[:amax + 1].min())  # sustained rise to the peak
+    if net_rise < _NB_MIN_NET_RISE:
+        return []  # too flat: no meaningful sustained rise
+
+    rise_pos = find_steepest_rise_pos(iot_df)
+    end = rise_pos - gap
+    start = end - win
+    if start < 0 or end <= start:
+        return []  # not enough history before the rise for a full window
+
+    d = iot_df.iloc[start:end]
+    return [{"window_type": "non_breakout", "label": 0, "data": d,
+             "start": d.index[0], "end": d.index[-1]}]
+
+
 # --------------------------------------------------------------------------- #
 # Feature assembly
 # --------------------------------------------------------------------------- #

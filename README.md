@@ -3,6 +3,22 @@
 An early-signal radar for niche food ingredients. It diagnoses where an ingredient sits in
 its trend lifecycle. It does **not** predict virality. Radar, not crystal ball.
 
+## Data provenance
+
+Every model input is real Google Trends data, cached as CSVs in `data/raw/`. The headline
+result — logistic regression, 0.66 leave-one-ingredient-out accuracy — uses **no synthetic
+data at all** (`src/experiment.py`, `run_lr_loo`). The single place synthesis appears is
+label-preserving augmentation (small jitter, amplitude scale, time-shift) used to train the
+1D-CNN _comparison_ model (`src/sequences.py`). That augmentation is applied inside each
+training fold only, never to the held-out ingredient (`src/experiment.py:48`), so it can't
+leak — and the CNN did not beat the baseline, so it isn't responsible for the headline
+number either. Reproduce the headline in five seconds:
+
+```bash
+python -c "from src.experiment import run_lr_loo; a,p,r=run_lr_loo(); print(f'LR LOO acc={a:.3f}')"
+# -> LR LOO acc=0.660
+```
+
 ## Setup
 
 ```bash
