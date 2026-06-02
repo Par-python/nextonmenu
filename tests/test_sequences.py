@@ -86,3 +86,31 @@ def test_augment_preserves_monotonicity_across_seeds():
             # with no jitter/scale, only time-shift applies; a correctly edge-padded
             # shift of a monotonic ramp stays monotonic non-decreasing
             assert np.all(np.diff(v) >= -1e-9), f"seed={seed} not monotonic: {v}"
+
+
+def test_sequence_dataset_includes_non_breakouts(monkeypatch):
+    import pandas as pd
+    import src.sequences as S
+
+    idx = pd.date_range("2010-01-01", periods=520, freq="W")
+    rise_peak = np.concatenate([np.full(150, 5.0), np.linspace(5, 100, 260),
+                                np.full(110, 90.0)])
+    nb = np.concatenate([np.full(150, 5.0), np.linspace(5, 40, 200),
+                         np.full(170, 38.0)])  # rises modestly, never breaks out
+
+    def fake_fetch(ing, timeframe=None, tag=None):
+        vals = nb if ing in {"teff", "fonio"} else rise_peak
+        return pd.DataFrame({"value": vals}, index=idx)
+
+    monkeypatch.setattr(S, "fetch_interest_over_time", fake_fetch, raising=False)
+    monkeypatch.setattr("src.config.VIRAL_INGREDIENTS", ["matcha", "ube"])
+    monkeypatch.setattr("src.config.NON_BREAKOUT_INGREDIENTS", ["teff", "fonio"])
+
+    X, y, groups = S.build_sequence_dataset(length=24)
+    nb_mask = np.isin(groups, ["teff", "fonio"])
+    viral_mask = np.isin(groups, ["matcha", "ube"])
+    # parity: the default dataset must contain BOTH viral windows and non-breakouts
+    assert viral_mask.sum() >= 1
+    assert 1 in set(y[viral_mask])           # viral set carries the label-1 early curves
+    assert nb_mask.sum() >= 1
+    assert set(y[nb_mask]) == {0}            # non-breakouts are all label-0 hard negatives

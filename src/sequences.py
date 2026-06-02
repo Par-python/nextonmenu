@@ -1,6 +1,9 @@
 """Raw trend windows -> fixed-length, normalized curves for the 1D-CNN."""
 import numpy as np
 
+from src.fetch import fetch_interest_over_time
+from src.features import slice_windows, slice_non_breakout_window
+
 
 def resample(values, length=24):
     """Linearly interpolate a 1D series to exactly `length` evenly-spaced points."""
@@ -60,22 +63,29 @@ SEQ_LENGTH = 24
 
 def build_sequence_dataset(ingredients=None, length=SEQ_LENGTH):
     """Return (X, y, groups): X is (n, length) normalized curves, y labels,
-    groups ingredient names. Uses the SAME windows as the LR dataset.
+    groups ingredient names. Uses the SAME windows as the LR dataset: viral
+    ingredients via slice_windows, non-breakouts via slice_non_breakout_window.
 
     Augmentation is intentionally NOT applied here — it is applied per-fold inside
     the experiment to avoid leaking augmented copies of a held-out ingredient.
     """
-    from src.config import VIRAL_INGREDIENTS, FULL_TIMEFRAME
-    from src.fetch import fetch_interest_over_time
-    from src.features import slice_windows
+    from src.config import VIRAL_INGREDIENTS, NON_BREAKOUT_INGREDIENTS, FULL_TIMEFRAME
 
-    ingredients = ingredients or VIRAL_INGREDIENTS
+    viral = VIRAL_INGREDIENTS if ingredients is None else ingredients
     X, y, groups = [], [], []
-    for ing in ingredients:
-        iot = fetch_interest_over_time(ing, timeframe=FULL_TIMEFRAME, tag="full")
-        for w in slice_windows(iot):
+
+    def _add(ing, windows):
+        for w in windows:
             curve = normalize(resample(w["data"]["value"].to_numpy(), length))
-            X.append(curve)
-            y.append(w["label"])
-            groups.append(ing)
+            X.append(curve); y.append(w["label"]); groups.append(ing)
+
+    for ing in viral:
+        iot = fetch_interest_over_time(ing, timeframe=FULL_TIMEFRAME, tag="full")
+        _add(ing, slice_windows(iot))
+
+    if ingredients is None:  # only pull non-breakouts for the default full dataset
+        for ing in NON_BREAKOUT_INGREDIENTS:
+            iot = fetch_interest_over_time(ing, timeframe=FULL_TIMEFRAME, tag="full")
+            _add(ing, slice_non_breakout_window(iot))
+
     return np.array(X, dtype=float), np.array(y, dtype=int), np.array(groups)
