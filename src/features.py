@@ -4,7 +4,8 @@ import pandas as pd
 from scipy.stats import entropy as shannon_entropy
 
 from src.config import (WINDOW_MONTHS, EARLY_GAP_MONTHS, VIRAL_INGREDIENTS,
-                        FEATURES_PATH, PROCESSED_DIR, FULL_TIMEFRAME)
+                        NON_BREAKOUT_INGREDIENTS, FEATURES_PATH, PROCESSED_DIR,
+                        FULL_TIMEFRAME)
 
 WEEKS_PER_MONTH = 4.345
 
@@ -281,7 +282,8 @@ def extract_features(window_df, geo_entropy):
 # Dataset orchestration
 # --------------------------------------------------------------------------- #
 def _window_tag(window_type):
-    return {"early_curve": "early", "pre_niche": "pre", "post_peak": "post"}[window_type]
+    return {"early_curve": "early", "pre_niche": "pre", "post_peak": "post",
+            "non_breakout": "nb"}[window_type]
 
 
 def build_dataset(ingredients=None):
@@ -294,6 +296,23 @@ def build_dataset(ingredients=None):
         print(f"Processing {ing} ...")
         iot = fetch_interest_over_time(ing, timeframe=FULL_TIMEFRAME, tag="full")
         for w in slice_windows(iot):
+            tag = _window_tag(w["window_type"])
+            tf = f"{w['start'].date()} {w['end'].date()}"
+            try:
+                region = fetch_interest_by_region(ing, timeframe=tf, tag=tag)
+                geo = geographic_entropy(region)
+            except Exception as e:
+                print(f"  region fetch failed for {ing}/{tag}: {e}; geo=NaN")
+                geo = float("nan")
+            feats = extract_features(w["data"], geo_entropy=geo)
+            feats.update({"ingredient": ing, "window_type": w["window_type"],
+                          "label": w["label"]})
+            rows.append(feats)
+
+    for ing in NON_BREAKOUT_INGREDIENTS:
+        print(f"Processing non-breakout {ing} ...")
+        iot = fetch_interest_over_time(ing, timeframe=FULL_TIMEFRAME, tag="full")
+        for w in slice_non_breakout_window(iot):
             tag = _window_tag(w["window_type"])
             tf = f"{w['start'].date()} {w['end'].date()}"
             try:
