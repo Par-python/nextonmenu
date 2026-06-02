@@ -160,3 +160,12 @@ def test_non_breakout_short_history_before_rise_yields_nothing():
     vals = np.concatenate([np.linspace(5, 60, 30), np.full(n - 30, 58.0)])  # rises at the start
     df = pd.DataFrame({"value": vals}, index=idx)
     assert slice_non_breakout_window(df) == []
+
+
+# --- config wiring ---------------------------------------------------------
+def test_non_breakout_list_is_disjoint_from_viral_and_niche():
+    from src.config import (VIRAL_INGREDIENTS, NICHE_INGREDIENTS,
+                            NON_BREAKOUT_INGREDIENTS)
+    assert len(NON_BREAKOUT_INGREDIENTS) == 10
+    assert set(NON_BREAKOUT_INGREDIENTS).isdisjoint(VIRAL_INGREDIENTS)
+    assert set(NON_BREAKOUT_INGREDIENTS).isdisjoint(NICHE_INGREDIENTS)

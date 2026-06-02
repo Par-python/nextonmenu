@@ -30,6 +30,17 @@ NICHE_INGREDIENTS = [
     "black sesame", "koji",
 ]
 
+# Ingredients that organized/rose somewhat but never crossed into mainstream.
+# Used as label-0 HARD NEGATIVES (their steepest-rise early window) so the model is
+# tested against "entropy organized, then fizzled" — not just winners' off-peak phases.
+# jackfruit was dropped (real vegan-meat breakout ~2018-2020 -> would be a mislabeled
+# negative); sorghum replaced it. If any term here is later found to have actually
+# broken out, move it out — it would be the same mislabeling this set exists to fix.
+NON_BREAKOUT_INGREDIENTS = [
+    "teff", "fonio", "sumac", "freekeh", "maca",
+    "lucuma", "baobab", "tigernut", "sea buckthorn", "sorghum",
+]
+
 FULL_TIMEFRAME = "2004-01-01 2024-01-01"  # training: locate true peak
 DEMO_TIMEFRAME = "today 5-y"              # live demo: recent window
 
