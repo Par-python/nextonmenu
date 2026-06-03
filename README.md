@@ -6,6 +6,12 @@ it does not forecast that any given ingredient will go mainstream. Tested agains
 "organized-then-fizzled" ingredients, it still raises a false alarm on about a third of them
 (specificity 0.65). Radar with a known, measured noise level — not a crystal ball.
 
+![NextOnMenu live diagnosis: chamoy in Momentum vs pandan as No signal](notebooks/demo_diagnosis.png)
+
+*Live diagnosis output. Chamoy reads as **Momentum** (accelerating, pre-peak — an early-mover
+window); pandan sits just under the line at **No signal**, a deliberately conservative call on a
+curve the model isn't convinced by yet.*
+
 ## Data provenance
 
 Every model input is real Google Trends data, cached as CSVs in `data/raw/`. The headline
