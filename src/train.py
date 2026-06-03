@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneGroupOut
-from sklearn.metrics import accuracy_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 from src.config import FEATURES_PATH, MODEL_PATH, PROCESSED_DIR
 from src.features import FEATURE_COLUMNS
 
@@ -26,7 +26,7 @@ def _load_xy():
 
 
 def evaluate(X, y, groups):
-    """Leave-one-ingredient-out CV. Returns (accuracy, precision, recall)."""
+    """Leave-one-ingredient-out CV. Returns (accuracy, precision, recall, specificity, cm)."""
     logo = LeaveOneGroupOut()
     preds, truths = [], []
     for train_idx, test_idx in logo.split(X, y, groups):
@@ -35,15 +35,20 @@ def evaluate(X, y, groups):
         clf.fit(scaler.transform(X[train_idx]), y[train_idx])
         preds.extend(clf.predict(scaler.transform(X[test_idx])))
         truths.extend(y[test_idx])
+    cm = confusion_matrix(truths, preds, labels=[0, 1])
+    tn, fp = int(cm[0, 0]), int(cm[0, 1])
+    spec = (tn / (tn + fp)) if (tn + fp) else 0.0
     return (accuracy_score(truths, preds),
             precision_score(truths, preds, zero_division=0),
-            recall_score(truths, preds, zero_division=0))
+            recall_score(truths, preds, zero_division=0),
+            spec, cm)
 
 
 def train_and_save():
     X, y, groups, medians = _load_xy()
-    acc, prec, rec = evaluate(X, y, groups)
-    print(f"LOO accuracy={acc:.2f} precision={prec:.2f} recall={rec:.2f}")
+    acc, prec, rec, spec, cm = evaluate(X, y, groups)
+    print(f"LOO accuracy={acc:.2f} precision={prec:.2f} recall={rec:.2f} specificity={spec:.2f}")
+    print(f"confusion matrix [rows=actual 0/1, cols=pred 0/1]:\n{cm}")
     if acc < 0.70:
         print("WARNING: accuracy below the 0.70 success criterion.")
 
@@ -57,7 +62,7 @@ def train_and_save():
         pickle.dump({"scaler": scaler, "clf": clf, "columns": FEATURE_COLUMNS,
                      "medians": medians.to_dict()}, f)
     print(f"Saved model -> {MODEL_PATH}")
-    return acc, prec, rec
+    return acc, prec, rec, spec
 
 
 if __name__ == "__main__":

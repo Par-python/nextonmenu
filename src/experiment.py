@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneGroupOut
-from sklearn.metrics import accuracy_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 
 from src.config import FEATURES_PATH, PROCESSED_DIR
 from src.features import FEATURE_COLUMNS
@@ -23,9 +23,16 @@ def _lr_xy():
 
 
 def _scores(truths, preds):
-    return (accuracy_score(truths, preds),
-            precision_score(truths, preds, zero_division=0),
-            recall_score(truths, preds, zero_division=0))
+    """Return (accuracy, precision, recall, specificity, fp_rate)."""
+    acc = accuracy_score(truths, preds)
+    prec = precision_score(truths, preds, zero_division=0)
+    rec = recall_score(truths, preds, zero_division=0)
+    cm = confusion_matrix(truths, preds, labels=[0, 1])
+    tn, fp = int(cm[0, 0]), int(cm[0, 1])
+    denom = tn + fp
+    spec = (tn / denom) if denom else 0.0
+    fpr = (fp / denom) if denom else 0.0
+    return acc, prec, rec, spec, fpr
 
 
 def run_lr_loo():
@@ -61,9 +68,10 @@ def run_cnn_loo():
 def main():
     lr = run_lr_loo()
     cnn = run_cnn_loo()
-    print(f"{'Model':<22}{'LOO acc':>9}{'precision':>11}{'recall':>9}")
-    print(f"{'Logistic Regression':<22}{lr[0]:>9.2f}{lr[1]:>11.2f}{lr[2]:>9.2f}")
-    print(f"{'1D-CNN (augmented)':<22}{cnn[0]:>9.2f}{cnn[1]:>11.2f}{cnn[2]:>9.2f}")
+    hdr = f"{'Model':<22}{'acc':>7}{'prec':>7}{'rec':>7}{'spec':>7}{'fp_rate':>9}"
+    print(hdr)
+    print(f"{'Logistic Regression':<22}{lr[0]:>7.2f}{lr[1]:>7.2f}{lr[2]:>7.2f}{lr[3]:>7.2f}{lr[4]:>9.2f}")
+    print(f"{'1D-CNN (augmented)':<22}{cnn[0]:>7.2f}{cnn[1]:>7.2f}{cnn[2]:>7.2f}{cnn[3]:>7.2f}{cnn[4]:>9.2f}")
     if cnn[0] > lr[0]:
         verdict = f"CNN BEATS baseline ({cnn[0]:.2f} > {lr[0]:.2f})"
     elif abs(cnn[0] - lr[0]) < 1e-9:
@@ -75,7 +83,7 @@ def main():
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(
         [["logistic_regression", *lr], ["cnn_augmented", *cnn]],
-        columns=["model", "accuracy", "precision", "recall"],
+        columns=["model", "accuracy", "precision", "recall", "specificity", "fp_rate"],
     ).to_csv(PROCESSED_DIR / "experiment_results.csv", index=False)
     print("Saved -> experiment_results.csv")
 
